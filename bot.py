@@ -49,8 +49,8 @@ async def web_app_data_handler(message: types.Message):
 
 # Обработчик команды /play для отправки кнопки с Web App
 @dp.message(Command('play'))
-
-router = Router()
+    
+    router = Router()
 
 @router.message(Command(commands=['play']))
 async def play_command(message: Message):
