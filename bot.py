@@ -1,8 +1,8 @@
 import asyncio
 import sqlite3
 from aiogram import Bot, Dispatcher, types
-from aiogram.filters import CommandStart
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, Message, WebAppData
+from aiogram.filters import Command
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 # Замените 'YOUR_BOT_TOKEN' на токен вашего бота
@@ -27,8 +27,8 @@ CREATE TABLE IF NOT EXISTS users (
 conn.commit()
 
 # Обработчик команды /start
-@dp.message(CommandStart())
-async def start_command(message: Message):
+@dp.message(Command(commands=['start']))
+async def start_command(message: types.Message):
     user_id = message.from_user.id
     username = message.from_user.username
 
@@ -45,8 +45,8 @@ async def start_command(message: Message):
         await message.reply("Вы уже зарегистрированы.")
 
 # Обработчик команды /score
-@dp.message(commands=['score'])
-async def score_command(message: Message):
+@dp.message(Command(commands=['score']))
+async def score_command(message: types.Message):
     user_id = message.from_user.id
 
     # Получение текущего количества очков пользователя
@@ -60,21 +60,22 @@ async def score_command(message: Message):
         await message.reply("Вы не зарегистрированы. Используйте команду /start для регистрации.")
 
 # Обработчик данных от Web App
-@dp.message(lambda message: message.web_app_data is not None)
-async def web_app_data_handler(message: Message):
+@dp.message(lambda message: message.web_app_data)
+async def web_app_data_handler(message: types.Message):
     user_id = message.from_user.id
     data = message.web_app_data.data  # Получение данных от Web App
 
-    # Обработка полученных данных
-    if data == '{"action": "level_completed"}':
+    # Здесь вы можете обработать полученные данные
+    # Например, если данные содержат информацию о завершении уровня:
+    if data == 'level_completed':
         # Начисляем очки за завершение уровня
         cursor.execute('UPDATE users SET points = points + 100 WHERE user_id = ?', (user_id,))
         conn.commit()
         await message.reply("Поздравляем! Вы завершили уровень и получили 100 очков.")
 
 # Обработчик команды /play для отправки кнопки с Web App
-@dp.message(commands=['play'])
-async def play_command(message: Message):
+@dp.message(Command(commands=['play']))
+async def play_command(message: types.Message):
     keyboard = InlineKeyboardBuilder()
     web_app_button = InlineKeyboardButton(
         text="Играть",
