@@ -1,12 +1,21 @@
+import asyncio
 import sqlite3
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, CallbackContext, MessageHandler, Filters
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from aiogram.utils import executor
 
-# Инициализация базы данных
-conn = sqlite3.connect('users.db', check_same_thread=False)
+# Замените 'YOUR_BOT_TOKEN' на токен вашего бота
+BOT_TOKEN = '7211622201:AAH6uicWDk-pyBRpXdHa1oPDjX0pu6pnLaw'
+
+# Инициализация бота и диспетчера
+bot = Bot(token=BOT_TOKEN)
+dp = Dispatcher(bot)
+
+# Подключение к базе данных SQLite
+conn = sqlite3.connect('users.db')
 cursor = conn.cursor()
 
-# Создание таблицы пользователей
+# Создание таблицы пользователей, если она не существует
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS users (
     user_id INTEGER PRIMARY KEY,
@@ -16,51 +25,64 @@ CREATE TABLE IF NOT EXISTS users (
 ''')
 conn.commit()
 
-# Функция для добавления очков пользователю
-def add_points(user_id, points):
-    cursor.execute('SELECT points FROM users WHERE user_id = ?', (user_id,))
-    result = cursor.fetchone()
-    if result:
-        current_points = result[0]
-        cursor.execute('UPDATE users SET points = ? WHERE user_id = ?', (current_points + points, user_id))
-    else:
-        cursor.execute('INSERT INTO users (user_id, points) VALUES (?, ?)', (user_id, points))
-    conn.commit()
-
 # Обработчик команды /start
-def start(update: Update, context: CallbackContext):
-    user = update.effective_user
-    cursor.execute('INSERT OR IGNORE INTO users (user_id, username) VALUES (?, ?)', (user.id, user.username))
-    conn.commit()
-    update.message.reply_text(f'Привет, {user.first_name}! Ваши очки: 0')
+@dp.message_handler(commands=['start'])
+async def start_command(message: types.Message):
+    user_id = message.from_user.id
+    username = message.from_user.username
+
+    # Проверка, существует ли пользователь в базе данных
+    cursor.execute('SELECT * FROM users WHERE user_id = ?', (user_id,))
+    user = cursor.fetchone()
+
+    if user is None:
+        # Если пользователя нет, добавляем его в базу данных
+        cursor.execute('INSERT INTO users (user_id, username) VALUES (?, ?)', (user_id, username))
+        conn.commit()
+        await message.reply("Добро пожаловать! Вы зарегистрированы.")
+    else:
+        await message.reply("Вы уже зарегистрированы.")
 
 # Обработчик команды /score
-def score(update: Update, context: CallbackContext):
-    user_id = update.effective_user.id
+@dp.message_handler(commands=['score'])
+async def score_command(message: types.Message):
+    user_id = message.from_user.id
+
+    # Получение текущего количества очков пользователя
     cursor.execute('SELECT points FROM users WHERE user_id = ?', (user_id,))
     result = cursor.fetchone()
+
     if result:
-        update.message.reply_text(f'Ваши очки: {result[0]}')
+        points = result[0]
+        await message.reply(f"Ваш текущий счет: {points} очков.")
     else:
-        update.message.reply_text('Вы еще не зарегистрированы. Используйте команду /start.')
+        await message.reply("Вы не зарегистрированы. Используйте команду /start для регистрации.")
 
-# Обработчик текстовых сообщений
-def handle_message(update: Update, context: CallbackContext):
-    user_id = update.effective_user.id
-    add_points(user_id, 10)
-    update.message.reply_text('Вы получили 10 очков!')
+# Обработчик данных от Web App
+@dp.message_handler(content_types=types.ContentType.WEB_APP_DATA)
+async def web_app_data_handler(message: types.Message):
+    user_id = message.from_user.id
+    data = message.web_app_data.data  # Получение данных от Web App
 
-def main():
-    # Замените 'YOUR_BOT_TOKEN' на токен вашего бота
-    updater = Updater('7211622201:AAH6uicWDk-pyBRpXdHa1oPDjX0pu6pnLaw', use_context=True)
-    dispatcher = updater.dispatcher
+    # Здесь вы можете обработать полученные данные
+    # Например, если данные содержат информацию о завершении уровня:
+    if data == 'level_completed':
+        # Начисляем очки за завершение уровня
+        cursor.execute('UPDATE users SET points = points + 100 WHERE user_id = ?', (user_id,))
+        conn.commit()
+        await message.reply("Поздравляем! Вы завершили уровень и получили 100 очков.")
 
-    dispatcher.add_handler(CommandHandler('start', start))
-    dispatcher.add_handler(CommandHandler('score', score))
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
-
-    updater.start_polling()
-    updater.idle()
+# Обработчик команды /play для отправки кнопки с Web App
+@dp.message_handler(commands=['play'])
+async def play_command(message: types.Message):
+    keyboard = InlineKeyboardMarkup()
+    web_app_button = InlineKeyboardButton(
+        text="Играть",
+        web_app=WebAppInfo(url="https://karos7777.github.io/chujoy/")  # Замените на URL вашего Web App
+    )
+    keyboard.add(web_app_button)
+    await message.reply("Нажмите кнопку ниже, чтобы начать игру.", reply_markup=keyboard)
 
 if __name__ == '__main__':
-    main()
+    from aiogram import executor
+    executor.start_polling(dp, skip_updates=True)
