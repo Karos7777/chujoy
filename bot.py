@@ -1,9 +1,11 @@
-from aiogram import Bot, Dispatcher, Router, types, F
+from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from database import init_db, add_user, get_points, update_points
-import asyncio import Router
+import asyncio
+from aiogram import Router
+
 
 API_TOKEN = '7211622201:AAH6uicWDk-pyBRpXdHa1oPDjX0pu6pnLaw'  # Замените на токен вашего бота
 
@@ -33,7 +35,7 @@ async def score_command(message: types.Message):
         await message.reply(f"Ваш текущий счет: {points} очков.")
     else:
         await message.reply("Вы не зарегистрированы. Используйте команду /start для регистрации.")
-        pass
+        
 
 # Обработчик данных от Web App
 @router.message(F.web_app_data)
@@ -65,7 +67,7 @@ async def play_command(message: types.Message):
     await message.answer("Нажмите кнопку ниже, чтобы начать игру.", reply_markup=keyboard)
 
 # Инициализация диспетчера и добавление роутера
-dp = Dispatcher()
+dp = Dispatcher(bot)
 dp.include_router(router)
 
 async def main():
