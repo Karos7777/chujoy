@@ -49,14 +49,21 @@ async def web_app_data_handler(message: types.Message):
 
 # Обработчик команды /play для отправки кнопки с Web App
 @dp.message(Command('play'))
-async def play_command(message: types.Message):
-    keyboard = InlineKeyboardMarkup()
+
+router = Router()
+
+@router.message(Command(commands=['play']))
+async def play_command(message: Message):
+    # Создаем кнопку с WebAppInfo
     web_app_button = InlineKeyboardButton(
         text="Играть",
         web_app=WebAppInfo(url="https://karos7777.github.io/chujoy/")  # Замените на URL вашего Web App
     )
-    keyboard.add(web_app_button)
-    await message.reply("Нажмите кнопку ниже, чтобы начать игру.", reply_markup=keyboard)
+
+    # Создаем разметку клавиатуры и добавляем в нее кнопку
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[[web_app_button]])
+
+    await message.answer("Нажмите кнопку ниже, чтобы начать игру.", reply_markup=keyboard)
 
 async def main():
     await dp.start_polling(bot)
