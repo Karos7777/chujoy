@@ -1,21 +1,23 @@
-import asyncio
-from aiogram import Bot, Dispatcher, types, F
+from aiogram import Bot, Dispatcher, Router, types, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from database import init_db, add_user, get_points, update_points
+import asyncio
 
 API_TOKEN = '7211622201:AAH6uicWDk-pyBRpXdHa1oPDjX0pu6pnLaw'  # Замените на токен вашего бота
 
-# Инициализация бота и диспетчера
+# Инициализация бота
 bot = Bot(token=API_TOKEN)
-dp = Dispatcher()
+
+# Создание роутера
+router = Router()
 
 # Инициализация базы данных
 init_db()
 
 # Обработчик команды /start
-@dp.message(Command('start'))
+@router.message(Command('start'))
 async def start_command(message: types.Message):
     user_id = message.from_user.id
     username = message.from_user.username
@@ -23,7 +25,7 @@ async def start_command(message: types.Message):
     await message.reply("Добро пожаловать! Вы зарегистрированы.")
 
 # Обработчик команды /score
-@dp.message(Command('score'))
+@router.message(Command('score'))
 async def score_command(message: types.Message):
     user_id = message.from_user.id
     points = get_points(user_id)
@@ -33,7 +35,7 @@ async def score_command(message: types.Message):
         await message.reply("Вы не зарегистрированы. Используйте команду /start для регистрации.")
 
 # Обработчик данных от Web App
-@dp.message(F.web_app_data)
+@router.message(F.web_app_data)
 async def web_app_data_handler(message: types.Message):
     user_id = message.from_user.id
     data = message.web_app_data.data  # Получение данных от Web App
@@ -48,12 +50,8 @@ async def web_app_data_handler(message: types.Message):
             await message.reply("Вы не зарегистрированы. Используйте команду /start для регистрации.")
 
 # Обработчик команды /play для отправки кнопки с Web App
-@dp.message(Command('play'))
-    
-    router = Router()
-
-@router.message(Command(commands=['play']))
-async def play_command(message: Message):
+@router.message(Command('play'))
+async def play_command(message: types.Message):
     # Создаем кнопку с WebAppInfo
     web_app_button = InlineKeyboardButton(
         text="Играть",
@@ -64,6 +62,10 @@ async def play_command(message: Message):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[[web_app_button]])
 
     await message.answer("Нажмите кнопку ниже, чтобы начать игру.", reply_markup=keyboard)
+
+# Инициализация диспетчера и добавление роутера
+dp = Dispatcher()
+dp.include_router(router)
 
 async def main():
     await dp.start_polling(bot)
