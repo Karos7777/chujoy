@@ -1,8 +1,9 @@
 import asyncio
 import sqlite3
-from aiogram import Bot, Dispatcher, types
+from aiogram import Bot, Dispatcher, types, F
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
-from aiogram.filters import Command
+from aiogram.filters import CommandStart, Command
+from aiogram.enums import ContentType
 
 # Замените 'YOUR_BOT_TOKEN' на токен вашего бота
 BOT_TOKEN = '7211622201:AAH6uicWDk-pyBRpXdHa1oPDjX0pu6pnLaw'
@@ -26,7 +27,7 @@ CREATE TABLE IF NOT EXISTS users (
 conn.commit()
 
 # Обработчик команды /start
-@dp.message(Command('start'))
+@dp.message(CommandStart())
 async def start_command(message: types.Message):
     user_id = message.from_user.id
     username = message.from_user.username
@@ -44,7 +45,7 @@ async def start_command(message: types.Message):
         await message.reply("Вы уже зарегистрированы.")
 
 # Обработчик команды /score
-@dp.message(Command('score'))
+@dp.message(Command(commands=['score']))
 async def score_command(message: types.Message):
     user_id = message.from_user.id
 
@@ -59,7 +60,7 @@ async def score_command(message: types.Message):
         await message.reply("Вы не зарегистрированы. Используйте команду /start для регистрации.")
 
 # Обработчик данных от Web App
-@dp.message(content_types=types.ContentType.WEB_APP_DATA)
+@dp.message(F.web_app_data)
 async def web_app_data_handler(message: types.Message):
     user_id = message.from_user.id
     data = message.web_app_data.data  # Получение данных от Web App
@@ -73,7 +74,7 @@ async def web_app_data_handler(message: types.Message):
         await message.reply("Поздравляем! Вы завершили уровень и получили 100 очков.")
 
 # Обработчик команды /play для отправки кнопки с Web App
-@dp.message(Command('play'))
+@dp.message(Command(commands=['play']))
 async def play_command(message: types.Message):
     keyboard = InlineKeyboardMarkup()
     web_app_button = InlineKeyboardButton(
