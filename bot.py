@@ -1,9 +1,9 @@
 import asyncio
 import sqlite3
 from aiogram import Bot, Dispatcher, types
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
-from aiogram.filters import CommandStart, Command
-from aiogram.enums import ContentType
+from aiogram.filters import CommandStart
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, Message, WebAppData
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 # Замените 'YOUR_BOT_TOKEN' на токен вашего бота
 BOT_TOKEN = '7211622201:AAH6uicWDk-pyBRpXdHa1oPDjX0pu6pnLaw'
@@ -28,7 +28,7 @@ conn.commit()
 
 # Обработчик команды /start
 @dp.message(CommandStart())
-async def start_command(message: types.Message):
+async def start_command(message: Message):
     user_id = message.from_user.id
     username = message.from_user.username
 
@@ -45,8 +45,8 @@ async def start_command(message: types.Message):
         await message.reply("Вы уже зарегистрированы.")
 
 # Обработчик команды /score
-@dp.message(Command(commands=['score']))
-async def score_command(message: types.Message):
+@dp.message(commands=['score'])
+async def score_command(message: Message):
     user_id = message.from_user.id
 
     # Получение текущего количества очков пользователя
@@ -61,28 +61,27 @@ async def score_command(message: types.Message):
 
 # Обработчик данных от Web App
 @dp.message(lambda message: message.web_app_data is not None)
-async def web_app_data_handler(message: types.Message):
+async def web_app_data_handler(message: Message):
     user_id = message.from_user.id
     data = message.web_app_data.data  # Получение данных от Web App
 
-    # Здесь вы можете обработать полученные данные
-    # Например, если данные содержат информацию о завершении уровня:
-    if data == 'level_completed':
+    # Обработка полученных данных
+    if data == '{"action": "level_completed"}':
         # Начисляем очки за завершение уровня
         cursor.execute('UPDATE users SET points = points + 100 WHERE user_id = ?', (user_id,))
         conn.commit()
         await message.reply("Поздравляем! Вы завершили уровень и получили 100 очков.")
 
 # Обработчик команды /play для отправки кнопки с Web App
-@dp.message(Command(commands=['play']))
-async def play_command(message: types.Message):
-    keyboard = InlineKeyboardMarkup()
+@dp.message(commands=['play'])
+async def play_command(message: Message):
+    keyboard = InlineKeyboardBuilder()
     web_app_button = InlineKeyboardButton(
         text="Играть",
         web_app=WebAppInfo(url="https://karos7777.github.io/chujoy/")  # Замените на URL вашего Web App
     )
     keyboard.add(web_app_button)
-    await message.reply("Нажмите кнопку ниже, чтобы начать игру.", reply_markup=keyboard)
+    await message.reply("Нажмите кнопку ниже, чтобы начать игру.", reply_markup=keyboard.as_markup())
 
 async def main():
     await dp.start_polling(bot)
